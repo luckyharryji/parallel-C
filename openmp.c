@@ -193,6 +193,11 @@ int main(int argc, char **argv) {
 /* Provided global variables are MAXN, N, procs, A[][], B[], and X[],
  * defined in the beginning of this code.  X[] is initialized to zeros.
  */
+
+/*
+Use OpenMp API to create the for loop parallization
+*/
+
 void gauss() {
   int norm, row, col;  /* Normalization row, and zeroing
 			* element row and col */
@@ -204,7 +209,7 @@ void gauss() {
   for (norm = 0; norm < N - 1; norm++) {
 #pragma omp parallel num_threads(8)
 {
-    #pragma omp for schedule(static) private(multiplier, row, col) 
+    #pragma omp for schedule(static) private(multiplier, row, col)
     for (row = norm + 1; row < N; row++) {
       multiplier = A[row][norm] / A[norm][norm];
       for (col = norm; col < N; col++) {

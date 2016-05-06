@@ -195,23 +195,27 @@ int main(int argc, char **argv) {
  * defined in the beginning of this code.  X[] is initialized to zeros.
  */
 
+/*
+This modifies version use dynamic scheduling for the parallization
+
+The parallization are implementated on the loop of rows, the norm loop has data
+dependency so can not be paralized here
+
+params:
+    colIndex(@int): global variable to control the loop of row
+
+mutex lock are used to schedule the thread.
+*/
 
 int colIndex;
 pthread_mutex_t index_lock;
 
 void *solve(void * threadNorm) {
- // int norm;
- // printf("Can get in Function \n");
   int  norm = *((int *)threadNorm);
- // norm = (int) threadNorm;
- // long norm;
- // norm = (long)threadNorm;
- // printf("get the norm %d \n", norm);
-
   int row = 0;
   float multiplier;
   int col;
-  
+
   while(row < N) {
     pthread_mutex_lock(&index_lock);
     row = norm + colIndex + 1;
@@ -226,7 +230,6 @@ void *solve(void * threadNorm) {
     }
     B[row] -= B[norm] * multiplier;
   }
- // pthread_exit(0);
 }
 
 
@@ -235,35 +238,17 @@ void gauss() {
 			* element row and col */
   float multiplier;
 
- // printf("Computing Serially.\n");
 
-  /* Gaussian elimination */
- /* for (norm = 0; norm < N - 1; norm++) {
-    for (row = norm + 1; row < N; row++) {
-      multiplier = A[row][norm] / A[norm][norm];
-      for (col = norm; col < N; col++) {
-	A[row][col] -= A[norm][col] * multiplier;
-      }
-      B[row] -= B[norm] * multiplier;
-   }
-  }
-*/
   colIndex = 0;
   pthread_mutex_init(&index_lock, NULL);
 
   pthread_t thread[procs];
 
-  //printf("After initial thread\n");
   for(norm = 0; norm < N - 1; norm++){
-  //  int *threadNorm = malloc(sizeof(*threadNorm));
-  //  if(threadNorm == NULL){
-  //  	exit(EXIT_FAILURE);
-  //  }
-  //  *threadNorm = norm;
+
     int i, j;
     colIndex = 0;
     for(i = 0; i < (procs); i++) {
-//	printf("created %d thread\n", i);
 	pthread_create(&thread[i], NULL, solve, (void *)&norm);
     }
     for(j = 0; j < (procs); j++) {
