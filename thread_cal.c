@@ -22,7 +22,7 @@
 char *ID;
 
 /* Program Parameters */
-#define MAXN 2000  /* Max value of N */
+#define MAXN 5000  /* Max value of N */
 int N;  /* Matrix size */
 int procs;  /* Number of processors to use */
 
@@ -202,10 +202,10 @@ pthread_mutex_t index_lock;
 void *solve(void * threadNorm) {
  // int norm;
  // printf("Can get in Function \n");
- // int  norm = *((int *)threadNorm);
+  int  norm = *((int *)threadNorm);
  // norm = (int) threadNorm;
-  long norm;
-  norm = (long)threadNorm;
+ // long norm;
+ // norm = (long)threadNorm;
  // printf("get the norm %d \n", norm);
 
   int row = 0;
@@ -217,13 +217,16 @@ void *solve(void * threadNorm) {
     row = norm + colIndex + 1;
     colIndex += 1;
     pthread_mutex_unlock(&index_lock);
+    if(row >= N){
+    	pthread_exit(0);
+    }
     multiplier = A[row][norm]/A[norm][norm];
     for(col = norm; col < N; col++) {
       A[row][col] -= A[norm][col] * multiplier;
     }
     B[row] -= B[norm] * multiplier;
   }
-  pthread_exit(0);
+ // pthread_exit(0);
 }
 
 
@@ -261,7 +264,7 @@ void gauss() {
     colIndex = 0;
     for(i = 0; i < (procs); i++) {
 //	printf("created %d thread\n", i);
-	pthread_create(&thread[i], NULL, solve, (void *)norm);
+	pthread_create(&thread[i], NULL, solve, (void *)&norm);
     }
     for(j = 0; j < (procs); j++) {
 	pthread_join(thread[j], NULL);

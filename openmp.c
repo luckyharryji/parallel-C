@@ -21,7 +21,7 @@
 char *ID;
 
 /* Program Parameters */
-#define MAXN 2000  /* Max value of N */
+#define MAXN 5000  /* Max value of N */
 int N;  /* Matrix size */
 int procs;  /* Number of processors to use */
 
@@ -201,10 +201,10 @@ void gauss() {
   printf("Computing Serially.\n");
 
   /* Gaussian elimination */
-#pragma omp num_threads(procs)
   for (norm = 0; norm < N - 1; norm++) {
-//#pragma omp num_threads(procs)
-#pragma omp for schedule(dynamic)
+#pragma omp parallel num_threads(8)
+{
+    #pragma omp for schedule(static) private(multiplier, row, col) 
     for (row = norm + 1; row < N; row++) {
       multiplier = A[row][norm] / A[norm][norm];
       for (col = norm; col < N; col++) {
@@ -212,6 +212,7 @@ void gauss() {
       }
       B[row] -= B[norm] * multiplier;
     }
+}
   }
   /* (Diagonal elements are not normalized to 1.  This is treated in back
    * substitution.)
