@@ -235,6 +235,12 @@ int main(int argc, char **argv) {
 		memset(A, 0, MAX_SIZE * MAX_SIZE * sizeof(float));
 		memset(B, 0, MAX_SIZE * sizeof(float));
 	}
+
+	double start_time = 0;
+	if (id == 0) {
+		start_time = MPI_Wtime();
+	}
+
 	scatter_data(id, num_procs);
 
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -244,6 +250,12 @@ int main(int argc, char **argv) {
 	//print_all_matrix(id, num_procs);
 
 	gather_data(id, num_procs);
+
+	double end_time = 0;
+	if (id == 0) {
+		end_time = MPI_Wtime();
+		fprintf(stdout, "Running time: %f", end_time - start_time);
+	}
 
 	//print_all_matrix(id, num_procs);
 
