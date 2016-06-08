@@ -3,8 +3,8 @@
 #include <math.h>
 #include <stdlib.h>
 
-#define NUM_POINTS 524288 
-//#define NUM_POINTS 2048
+//#define NUM_POINTS 524288 
+#define NUM_POINTS 2048
 
 unsigned int X_axis[NUM_POINTS];
 unsigned int Y_axis[NUM_POINTS];
@@ -56,10 +56,11 @@ void parallel_sort (numprocs, myid)
 	CoorArray res_sorted_x;
 	res_sorted_x = tree_merge(chunk_X, chunk_Y, size, numprocs, myid);
 
-	//local_quick_sort(chunk_Y, chunk_X, 0, size - 1);
-	//CoorArray res_sorted_y;
-	//res_sorted_y = tree_merge(chunk_Y, chunk_X, size, numprocs, myid);
+	local_quick_sort(chunk_Y, chunk_X, 0, size - 1);
+	CoorArray res_sorted_y;
+	res_sorted_y = tree_merge(chunk_Y, chunk_X, size, numprocs, myid);
 
+	/*
 	if (myid == 0) {
 		int i;
 		fprintf(stdout, "Check result: \n");
@@ -71,6 +72,7 @@ void parallel_sort (numprocs, myid)
 		}
 		fprintf(stdout, "\n");
 	}
+	*/
 	return;
 }
 
@@ -235,8 +237,10 @@ CoorArray tree_merge(a_x, a_y, size, numprocs, myid)
 					fprintf(stdout, "\n");
 				}
 				*/
-				free(a_x);
-				free(a_y);
+				if (step > 1) {
+					free(a_x);
+					free(a_y);
+				}
 				a_x = result.prim;
 				a_y = result.secd;
 				free(t_x);
@@ -246,8 +250,10 @@ CoorArray tree_merge(a_x, a_y, size, numprocs, myid)
 				int target_id = myid - step;
 				MPI_Send(a_x, s, MPI_INT, target_id, 0, MPI_COMM_WORLD);
 				MPI_Send(a_y, s, MPI_INT, target_id, 1, MPI_COMM_WORLD);
-				free(a_x);
-				free(a_y);
+				if (step > 1) {
+					free(a_x);
+					free(a_y);
+				}
 				break;
 		}
 		step *= 2;
