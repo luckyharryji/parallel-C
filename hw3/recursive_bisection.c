@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define NUM_POINTS 524288 
+//#define NUM_POINTS 524288 
 //#define NUM_POINTS 2048
-//#define NUM_POINTS 4 
+#define NUM_POINTS 16
 unsigned int X_axis[NUM_POINTS];
 unsigned int Y_axis[NUM_POINTS];
 
@@ -29,6 +29,7 @@ double distance_between_points(unsigned int, unsigned int, unsigned int, unsigne
 double total_cost(int, CoorArray, int, int);
 double local_sum(int);
 void print_points();
+void print_space(int);
 
 void find_quadrants (num_quadrants, numprocs, myid)
      int num_quadrants;
@@ -37,13 +38,28 @@ void find_quadrants (num_quadrants, numprocs, myid)
 {
 	CoorArray sorted_x;
 	CoorArray sorted_y;
-	parallel_sort (numprocs, myid, &sorted_x, &sorted_y);
+	/**
+	if(myid == 0){
+		print_points();
+	}
+	**/
 	
+	parallel_sort (numprocs, myid, &sorted_x, &sorted_y);
+
+	/**	
 	if (myid == 0) {
-		//sort_correctness_check(sorted_x.prim);
-		//sort_correctness_check(sorted_y.prim);
+		int i;
+		for(i = 0; i < NUM_POINTS; i++)
+			printf("(%d, %d)%c", sorted_x.prim[i], sorted_x.secd[i], i == NUM_POINTS - 1 ? '\n' : ' ');
+		printf("\n---------\n");
+		for(i = 0; i < NUM_POINTS; i++)
+			printf("(%d, %d)%c", sorted_y.prim[i], sorted_y.secd[i], i == NUM_POINTS - 1 ? '\n' : ' ');
+		sort_correctness_check(sorted_x.prim);
+		sort_correctness_check(sorted_y.prim);
 	}
 	
+	**/
+
 	if (myid == 0) {
 		bisect(num_quadrants, &sorted_x, &sorted_y, 0, NUM_POINTS);
 	}
@@ -59,6 +75,20 @@ void print_points ()
 	while( i < NUM_POINTS) {
 		fprintf(stdout, "x: %d , y: %d\n", X_axis[i], Y_axis[i]);
 		i += 1;
+	}
+	return;
+}
+
+void print_space(block_size)
+	int block_size;
+{
+	printf("print coordinates: ===========\n");
+	int i, j;
+	for (i = 0; i < NUM_POINTS; i += block_size){
+		printf("%d Area:\n", i);
+		for(j = i; j < i + block_size; j ++){
+			printf("x: %u,   y: %u\n", X_axis[j], Y_axis[j]);
+		}
 	}
 	return;
 }
@@ -79,9 +109,15 @@ double total_cost(block_size, sorted_point, myid, numprocs)
 	if (myid == 0){
 		memcpy((void*)(X_axis), (void *)(sorted_point.prim), NUM_POINTS * sizeof(unsigned int));
 		memcpy((void*)(Y_axis), (void *)(sorted_point.secd), NUM_POINTS * sizeof(unsigned int));
+	//	printf("id 0 X0 sorted_point.prim bcast: %u\n", sorted_point.prim[0]);
 	}
+	// printf("id %d X0 before bcast: %d\n", myid, X_axis[0]);
 	MPI_Bcast(X_axis, NUM_POINTS, MPI_INT, 0,MPI_COMM_WORLD);
 	MPI_Bcast(Y_axis, NUM_POINTS, MPI_INT, 0,MPI_COMM_WORLD);
+	if (myid == 0){
+		print_space(block_size);
+	}
+	// printf("id %d X0 after bcast: %d\n", myid, X_axis[0]);
 	/**
 	if (myid == 0) {
 		double _local_sum = local_sum(block_size);
@@ -104,7 +140,7 @@ double total_cost(block_size, sorted_point, myid, numprocs)
 			//	sum_cost_in_process += distance_between_points(X_axis[j], Y_axis[j], X_axis[k], Y_axis[k]);
 				sum_cost_in_process += distance_local;
 				
-	//			fprintf(stdout, "process: %d   , p1: %d  %d   ;  p2: %d  %d  ;  distance: %f \n", myid, X_axis[j], Y_axis[j], X_axis[k], Y_axis[k], distance_local);
+				//fprintf(stdout, "process: %d   , %d p1: %d  %d   ;  %d p2: %d  %d  ;  distance: %f \n", myid, j, X_axis[j], Y_axis[j], k, X_axis[k], Y_axis[k], distance_local);
 			}
 		}
 	}
@@ -160,7 +196,7 @@ double distance_between_points(point1_x, point1_y, point2_x, point2_y)
 	}
 	//double distance_x = (point1_x - point2_x);
 	//double distance_y = (point1_y - point2_y);
-	return sqrt(distance_x * distance_x + distance_y * distance_y);
+	return sqrt((double)distance_x * distance_x + distance_y * distance_y);
 //	return sqrt((point1_x - point2_x) * (point1_x - point2_x) + (point1_y - point2_y) * (point1_y - point2_y));
 }
 
