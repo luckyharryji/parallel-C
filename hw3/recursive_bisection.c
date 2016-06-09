@@ -6,7 +6,7 @@
 
 #define NUM_POINTS 524288 
 //#define NUM_POINTS 2048
-
+//#define NUM_POINTS 4 
 unsigned int X_axis[NUM_POINTS];
 unsigned int Y_axis[NUM_POINTS];
 
@@ -27,6 +27,8 @@ void bisect(int, CoorArray *, CoorArray *, int, int);
 void do_bisect(CoorArray *, int, int, unsigned int);
 double distance_between_points(unsigned int, unsigned int, unsigned int, unsigned int);
 double total_cost(int, CoorArray, int, int);
+double local_sum(int);
+void print_points();
 
 void find_quadrants (num_quadrants, numprocs, myid)
      int num_quadrants;
@@ -51,6 +53,15 @@ void find_quadrants (num_quadrants, numprocs, myid)
 	}
 }
 
+void print_points ()
+{
+	int i = 0;
+	while( i < NUM_POINTS) {
+		fprintf(stdout, "x: %d , y: %d\n", X_axis[i], Y_axis[i]);
+		i += 1;
+	}
+	return;
+}
 
 double total_cost(block_size, sorted_point, myid, numprocs)
 	int block_size;
@@ -58,30 +69,74 @@ double total_cost(block_size, sorted_point, myid, numprocs)
 	int myid;
 	int numprocs;
 {
+	/**
+	
+	if (myid == 0){
+		print_points();
+	}
+	**/
+	MPI_Barrier(MPI_COMM_WORLD);
 	if (myid == 0){
 		memcpy((void*)(X_axis), (void *)(sorted_point.prim), NUM_POINTS * sizeof(unsigned int));
 		memcpy((void*)(Y_axis), (void *)(sorted_point.secd), NUM_POINTS * sizeof(unsigned int));
 	}
 	MPI_Bcast(X_axis, NUM_POINTS, MPI_INT, 0,MPI_COMM_WORLD);
-	MPI_Bcast(Y_axis, NUM_POINTS, MPI_INT, 1,MPI_COMM_WORLD);
+	MPI_Bcast(Y_axis, NUM_POINTS, MPI_INT, 0,MPI_COMM_WORLD);
+	/**
+	if (myid == 0) {
+		double _local_sum = local_sum(block_size);
+		fprintf(stdout, "local cost %f \n", _local_sum);
+		print_points();
+	}
+	**/
 
+	MPI_Barrier(MPI_COMM_WORLD);
 //	int	index_start = myid * block_size;
 //	int index_end = index_start + lock_size;
 	double sum_cost_in_process = 0;
 	double cost_after_reduce;
+	//double distance_local = 0;
 	int i, j, k;
 	for(i = myid * block_size; i < NUM_POINTS; i += block_size * numprocs){
 		for(j = i; j < i + block_size; j++){
 			for(k = j + 1; k < i + block_size; k++) {
-				sum_cost_in_process += distance_between_points(X_axis[j], Y_axis[j], X_axis[k], Y_axis[k]);
+				double distance_local = distance_between_points(X_axis[j], Y_axis[j], X_axis[k], Y_axis[k]);
+			//	sum_cost_in_process += distance_between_points(X_axis[j], Y_axis[j], X_axis[k], Y_axis[k]);
+				sum_cost_in_process += distance_local;
+				
+	//			fprintf(stdout, "process: %d   , p1: %d  %d   ;  p2: %d  %d  ;  distance: %f \n", myid, X_axis[j], Y_axis[j], X_axis[k], Y_axis[k], distance_local);
 			}
 		}
 	}
-	MPI_Reduce((void *)(&sum_cost_in_process), (void *)(&cost_after_reduce), 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	//MPI_Reduce((void *)(&sum_cost_in_process), (void *)(&cost_after_reduce), 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	MPI_Reduce((&sum_cost_in_process), (&cost_after_reduce), 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 	if (myid == 0) {
 		return cost_after_reduce;
 	}
 	return 0;
+}
+
+double local_sum(block_size)
+	int block_size;
+{
+	fprintf(stdout, "block size: %d\n", block_size);
+	double sum_local = 0;
+	int i, j, k;
+	for (i = 0; i < NUM_POINTS; i += block_size){
+		if (i == NUM_POINTS){
+			break;
+		}
+		for(k = i; k < i + block_size; k++){
+			for(j = k + 1; j < i + block_size; j++){
+			//	double distance_local = distance_between_points(X_axis[j], Y_axis[j], X_axis[k], Y_axis[k]);
+				double distance_local = distance_between_points(X_axis[k], Y_axis[k], X_axis[j], Y_axis[j]);
+				fprintf(stdout, "p1: %d  %d   ;  p2: %d  %d  ;  distance: %f \n", X_axis[j], Y_axis[j], X_axis[k], Y_axis[k], distance_local);
+				sum_local += distance_local;
+			}
+
+		}
+	}
+	return sum_local;
 }
 
 double distance_between_points(point1_x, point1_y, point2_x, point2_y)
@@ -90,7 +145,23 @@ double distance_between_points(point1_x, point1_y, point2_x, point2_y)
 	unsigned int point2_x;
 	unsigned int point2_y;
 {
-	return sqrt((point1_x - point2_x) * (point1_x - point2_x) + (point1_y - point2_y) * (point1_y - point2_y));
+	double distance_x, distance_y;
+	if (point1_x > point2_x){
+		distance_x = (point1_x - point2_x);
+	}
+	else{
+		distance_x = (point2_x - point1_x);
+	}
+	if (point1_y > point2_y){
+		distance_y = (point1_y - point2_y);
+	}
+	else {
+		distance_y = (point2_y - point1_y);
+	}
+	//double distance_x = (point1_x - point2_x);
+	//double distance_y = (point1_y - point2_y);
+	return sqrt(distance_x * distance_x + distance_y * distance_y);
+//	return sqrt((point1_x - point2_x) * (point1_x - point2_x) + (point1_y - point2_y) * (point1_y - point2_y));
 }
 
 void bisect(num_quadrants, sorted_x, sorted_y, left, right)
